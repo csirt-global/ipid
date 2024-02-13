@@ -1,0 +1,3 @@
+requests>2
+pypdns>2
+pypssl>2
