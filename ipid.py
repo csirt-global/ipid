@@ -11,12 +11,12 @@ import creds
 
 DEBUG=True
 
-'''Identify all IPs in a Shodan result JSON'''
+"""Identify all IPs in a Shodan result JSON"""
 def id_sj(shodanjson: str) -> str:
     try: 
         j = json.loads(shodanjson)
         for row in j:
-            ip=row['ipaddress']
+            ip=row["ipaddress"]
             print(ip, identifyIP(ip))
             #TODO optimise based on the data shodan already provides
 
@@ -49,39 +49,39 @@ def passiveSSL(ipstr: str) -> set[str]:
     circl = pypssl.PyPSSL(basic_auth=(creds.username, creds.password))
     ssl= circl.query(ipstr)
     domains=set()
-    if '/' not in ipstr or (':' not in ipstr and ipstr.endswith('/32')) or (':' in ipstr and ipstr.endswith('/128')): #1 IP
+    if "/" not in ipstr or (":" not in ipstr and ipstr.endswith("/32")) or (":" in ipstr and ipstr.endswith("/128")): #1 IP
         if ipstr in ssl: 
-            for s in ssl[ipstr]['subjects']:
-                if '.' in ssl[ipstr]['subjects'][s]['values'][0]: # . implies a real FQDN, not an X400 address like an issuer has
+            for s in ssl[ipstr]["subjects"]:
+                if "." in ssl[ipstr]["subjects"][s]["values"][0]: # . implies a real FQDN, not an X400 address like an issuer has
                     # parse domains out. Not always as simple as 'CN=example.com' - could be 'C=US,CN=example.com/emailAddress=admin@msp.com'
-                    s1=ssl[ipstr]['subjects'][s]['values'][0]
-                    xs=s1.split(',')
+                    s1=ssl[ipstr]["subjects"][s]["values"][0]
+                    xs=s1.split(",")
                     for x in xs:
-                        if x.startswith('CN='):
-                            end=''
-                            if '/' in x:
-                                end=x.index('/')
+                        if x.startswith("CN="):
+                            end=""
+                            if "/" in x:
+                                end=x.index("/")
                             domains.add(x[3:end]) #remove CN= from subject
-                            if '/' in x and '@' in x[end:]:
+                            if "/" in x and "@" in x[end:]:
                                 y=x[end:]
-                                at=y.index('@')
+                                at=y.index("@")
                                 domains.add(y[at+1:])
         return domains
     
     else: # CIDR search
         return ssl
 
-'''Finds the BGP Prefix/CIDR subnet that this IP is routed to'''
+"""Finds the BGP Prefix/CIDR subnet that this IP is routed to"""
 def getPrefix(ipstr: str)-> str:
-    url=f'https://stat.ripe.net/data/looking-glass/data.json?resource={ipstr}'
+    url=f"https://stat.ripe.net/data/looking-glass/data.json?resource={ipstr}"
     r=requests.get(url)
     if r.status_code==200:
         j=r.json()
-        return j['data']['rrcs'][00]['peers'][00]['prefix']
+        return j["data"]["rrcs"][00]["peers"][00]["prefix"]
     else:
         return "Error/0" #return small slash so won't be fed to passiveSSL on L78
 
-'''Returns a set of emails you can use to contact an IP owner about security issues'''
+"""Returns a set of emails you can use to contact an IP owner about security issues"""
 def identifyIP(ipstr: str) -> set[str]:
     sec=getSecurityTxt(ipstr)
     if sec:
@@ -92,12 +92,12 @@ def identifyIP(ipstr: str) -> set[str]:
     if not domains:
         # search for common domain in subnet starting with nearest IPs to target
         prefix=getPrefix(ipstr)
-        prefixsize=int(prefix[prefix.index('/')+1:])
+        prefixsize=int(prefix[prefix.index("/")+1:])
         #ensure this path is tested
         if DEBUG:
             prefixsize=24
-            prefix=prefix[0:-3]+'/24'
-        if ':' not in ipstr and prefixsize > 23 or ':' in ipstr and prefixsize > 48 : #IPv4 or IPv6 'small' blocks
+            prefix=prefix[0:-3]+"/24"
+        if ":" not in ipstr and prefixsize > 23 or ":" in ipstr and prefixsize > 48 : #IPv4 or IPv6 'small' blocks
             ssl=passiveSSL(prefix)
             # get a sorted list of IPs with certs so we can find nearest neighbour
             ipa=ipaddress.ip_address(ipstr)
@@ -117,17 +117,17 @@ def identifyIP(ipstr: str) -> set[str]:
 def getEmailAddressesFromSecurityTxt(sectxt:str)->set[str]:
     if not sectxt:
         return set()
-    lines = sectxt.split('\n')
+    lines = sectxt.split("\n")
     addresses=set()
     for line in lines:
-        if line.startswith('Contact:') and 'mailto' in line:
-            address=re.search('mailto:(.+@.+)$', line).group(1)
+        if line.startswith("Contact:") and "mailto" in line:
+            address=re.search("mailto:(.+@.+)$", line).group(1)
             addresses.add(address)
     if len(addresses)==0:
-        raise Exception('Failed to find email addresses in security.txt. Dumping whole file:\n'+sectxt)
+        raise Exception("Failed to find email addresses in security.txt. Dumping whole file:\n"+sectxt)
     return addresses
 
-'''Returns a set of emails you can use to contact a domain owner about security issues'''
+"""Returns a set of emails you can use to contact a domain owner about security issues"""
 def identifyDomain(domain:str)->set[str]:
     sec=getSecurityTxt(domain)
     if sec:
