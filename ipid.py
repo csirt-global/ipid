@@ -11,6 +11,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def read_credentials(credentials_filepath: str) -> dict:
+    """
+    Read credentials from a JSON file
+    """
+    with open(credentials_filepath) as f:
+        return json.load(f)
+
 def id_sj(shodanjson: str) -> str:
     """
     Identify all IPs in a Shodan result JSON
@@ -19,14 +26,14 @@ def id_sj(shodanjson: str) -> str:
         j = json.loads(shodanjson)
         for row in j:
             ip=row["ipaddress"]
-            logging.info(ip, identifyIP(ip))
+            logging.info(ip, identify_ip(ip))
             #TODO optimise based on the data shodan already provides
 
     except Exception as e:
         print(e)
 
 
-def getSecurityTxt(host: str, port=443) -> str:
+def get_security_text(host: str, port=443) -> str:
     """Use HTTPS to download the security.txt file from its well-known location on the host
     """
     try:
@@ -39,7 +46,7 @@ def getSecurityTxt(host: str, port=443) -> str:
         return False
 
 
-def passiveDNS(ipstr: str,username:str, password:str) -> set[str]:
+def passive_dns(ipstr: str,username:str, password:str) -> set[str]:
     """
     Use circl.lu to find passive DNS records for the given IP and return a set of unique domains
     """
@@ -51,7 +58,7 @@ def passiveDNS(ipstr: str,username:str, password:str) -> set[str]:
     return domains
 
 
-def passiveSSL(ipstr: str,username:str,password:str) -> set[str]:
+def passive_ssl(ipstr: str,username:str,password:str) -> set[str]:
     """Use circl.lu to find SSL Certs for the given IP and return a set of unique domains found in the certs on that IP
     OR return the raw cert data for a CIDR range"""
     circl = pypssl.PyPSSL(basic_auth=(username, username))
@@ -80,7 +87,7 @@ def passiveSSL(ipstr: str,username:str,password:str) -> set[str]:
         return ssl
 
 
-def getPrefix(ipstr: str)-> str:
+def get_prefix(ipstr: str)-> str:
     """
     Finds the BGP Prefix/CIDR subnet that this IP is routed to
     """
@@ -90,29 +97,29 @@ def getPrefix(ipstr: str)-> str:
         j=r.json()
         return j["data"]["rrcs"][00]["peers"][00]["prefix"]
     else:
-        return "Error/0" #return small slash so won't be fed to passiveSSL on L78
+        return "Error/0" #return small slash so won't be fed to passive_ssl on L78
 
 
-def identifyIP(ipstr: str) -> set[str]:
+def identify_ip(ipstr: str) -> set[str]:
     """
     Returns a set of emails you can use to contact an IP owner about security issues
     """
-    sec=getSecurityTxt(ipstr)
+    sec=get_security_text(ipstr)
     if sec:
-        return getEmailAddressesFromSecurityTxt(sec)
+        return get_email_addresses_from_security_txt(sec)
 
-    domains=passiveSSL(ipstr)
-    domains=domains.union(passiveDNS(ipstr))
+    domains=passive_ssl(ipstr)
+    domains=domains.union(passive_dns(ipstr))
     if not domains:
         # search for common domain in subnet starting with nearest IPs to target
-        prefix=getPrefix(ipstr)
+        prefix=get_prefix(ipstr)
         prefixsize=int(prefix[prefix.index("/")+1:])
         #ensure this path is tested
         if DEBUG:
             prefixsize=24
             prefix=prefix[0:-3]+"/24"
         if ":" not in ipstr and prefixsize > 23 or ":" in ipstr and prefixsize > 48 : #IPv4 or IPv6 'small' blocks
-            ssl=passiveSSL(prefix)
+            ssl=passive_ssl(prefix)
             # get a sorted list of IPs with certs so we can find nearest neighbour
             ipa=ipaddress.ip_address(ipstr)
             ips=[]
@@ -125,10 +132,10 @@ def identifyIP(ipstr: str) -> set[str]:
 
     emails=set()
     for d in domains:
-        emails=emails.union(identifyDomain(d))
+        emails=emails.union(identify_domain(d))
     return emails
 
-def getEmailAddressesFromSecurityTxt(sectxt:str)->set[str]:
+def get_email_addresses_from_security_txt(sectxt:str)->set[str]:
     if not sectxt:
         return set()
     lines = sectxt.split("\n")
@@ -141,36 +148,12 @@ def getEmailAddressesFromSecurityTxt(sectxt:str)->set[str]:
         raise Exception("Failed to find email addresses in security.txt. Dumping whole file:\n"+sectxt)
     return addresses
 
-"""Returns a set of emails you can use to contact a domain owner about security issues"""
-def identifyDomain(domain:str)->set[str]:
-    sec=getSecurityTxt(domain)
+
+def identify_domain(domain:str)->set[str]:
+    """Returns a set of emails you can use to contact a domain owner about security issues"""
+    sec=get_security_text(domain)
     if sec:
-        return getEmailAddressesFromSecurityTxt(sec)
+        return get_email_addresses_from_security_txt(sec)
     # TODO else scrape website for security contacts
     return set()
 
-
-
-"""
-Things to try
-0. security.txt = done (shodan)
-
-1. find a domain
-- ssl subject or issuer domain (exclude common CAs)
-- check other ports on same IP (shodan)
-    - EHLO banner
-    - web content
-    - ssh banner
-    - SNMP
-- passive dns domain (dumpsterDNS, circl.lu etc)
-- reverse dns domain (exclude answers that contain the ip address in reverse as prob just the ISP?)
-- check BGP and repeat for other IPs in the subnet, find a pattern?
-
-2. look for security contact on the domain (or IP if 1 unsuccessful)
-- security.txt
-- scrape 80/443 links for security
-- scrape for contact
-- whois
-- geoIP and pass to relevant CSIRT.Global chapter
-- pass to local NCSC
-"""
