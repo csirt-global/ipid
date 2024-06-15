@@ -6,25 +6,29 @@ import pypssl
 import re
 import ipaddress
 from operator import itemgetter
+from settings import *
+import logging
 
-import creds
+logger = logging.getLogger(__name__)
 
-DEBUG=True
-
-"""Identify all IPs in a Shodan result JSON"""
 def id_sj(shodanjson: str) -> str:
+    """
+    Identify all IPs in a Shodan result JSON
+    """
     try: 
         j = json.loads(shodanjson)
         for row in j:
             ip=row["ipaddress"]
-            print(ip, identifyIP(ip))
+            logging.info(ip, identifyIP(ip))
             #TODO optimise based on the data shodan already provides
 
     except Exception as e:
         print(e)
 
-"""Use HTTPS to download the security.txt file from its well-known location on the host"""
+
 def getSecurityTxt(host: str, port=443) -> str:
+    """Use HTTPS to download the security.txt file from its well-known location on the host
+    """
     try:
         r = requests.get(f"https://{host}:{port}/.well-known/security.txt", verify=False, timeout=2)
         if r.status_code==200:
@@ -34,19 +38,23 @@ def getSecurityTxt(host: str, port=443) -> str:
     except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError) as e:
         return False
 
-"""Use circl.lu to find passive DNS records for the given IP and return a set of unique domains"""
-def passiveDNS(ipstr: str) -> set[str]:
-    pdns = pypdns.PyPDNS(basic_auth=(creds.username,creds.password))
+
+def passiveDNS(ipstr: str,username:str, password:str) -> set[str]:
+    """
+    Use circl.lu to find passive DNS records for the given IP and return a set of unique domains
+    """
+    pdns = pypdns.PyPDNS(basic_auth=(username, password))
     res = pdns.iter_query(ipstr)
     domains=set()
     for r in res:
         domains.add(r.rdata)
     return domains
 
-"""Use circl.lu to find SSL Certs for the given IP and return a set of unique domains found in the certs on that IP
-OR return the raw cert data for a CIDR range"""
-def passiveSSL(ipstr: str) -> set[str]:
-    circl = pypssl.PyPSSL(basic_auth=(creds.username, creds.password))
+
+def passiveSSL(ipstr: str,username:str,password:str) -> set[str]:
+    """Use circl.lu to find SSL Certs for the given IP and return a set of unique domains found in the certs on that IP
+    OR return the raw cert data for a CIDR range"""
+    circl = pypssl.PyPSSL(basic_auth=(username, username))
     ssl= circl.query(ipstr)
     domains=set()
     if "/" not in ipstr or (":" not in ipstr and ipstr.endswith("/32")) or (":" in ipstr and ipstr.endswith("/128")): #1 IP
@@ -71,8 +79,11 @@ def passiveSSL(ipstr: str) -> set[str]:
     else: # CIDR search
         return ssl
 
-"""Finds the BGP Prefix/CIDR subnet that this IP is routed to"""
+
 def getPrefix(ipstr: str)-> str:
+    """
+    Finds the BGP Prefix/CIDR subnet that this IP is routed to
+    """
     url=f"https://stat.ripe.net/data/looking-glass/data.json?resource={ipstr}"
     r=requests.get(url)
     if r.status_code==200:
@@ -81,8 +92,11 @@ def getPrefix(ipstr: str)-> str:
     else:
         return "Error/0" #return small slash so won't be fed to passiveSSL on L78
 
-"""Returns a set of emails you can use to contact an IP owner about security issues"""
+
 def identifyIP(ipstr: str) -> set[str]:
+    """
+    Returns a set of emails you can use to contact an IP owner about security issues
+    """
     sec=getSecurityTxt(ipstr)
     if sec:
         return getEmailAddressesFromSecurityTxt(sec)
