@@ -6,7 +6,7 @@ import pypssl
 import re
 import ipaddress
 from operator import itemgetter
-from settings import *
+from settings import DEBUG
 import logging
 
 logger = logging.getLogger(__name__)
