@@ -1,6 +1,6 @@
 # IPID
 
-## Goal
+## Goals
 
 This script is for fingerprinting servers to determine what vunerabilities should lead to responsible disclosure. 
 
