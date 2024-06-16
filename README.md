@@ -26,6 +26,8 @@ This script is for fingerprinting servers to determine what vunerabilities shoul
 - geoIP and pass to relevant CSIRT.Global chapter
 - pass to local NCSC
 
+3. Add setting.py
+
 ## Shodan Input
 
 When you query shodan.io, it returns a banner. 
