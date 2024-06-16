@@ -11,8 +11,9 @@ import creds
 
 DEBUG=True
 
-'''Identify all IPs in a Shodan result JSON'''
+
 def id_sj(shodanjson: str) -> str:
+    '''Identify all IPs in a Shodan result JSON'''
     try: 
         j = json.loads(shodanjson)
         for row in j:
@@ -23,8 +24,9 @@ def id_sj(shodanjson: str) -> str:
     except Exception as e:
         print(e)
 
-"""Use HTTPS to download the security.txt file from its well-known location on the host"""
+
 def getSecurityTxt(host: str, port=443) -> str:
+    """Use HTTPS to download the security.txt file from its well-known location on the host"""
     try:
         r = requests.get(f"https://{host}:{port}/.well-known/security.txt", verify=False, timeout=2)
         if r.status_code==200:
@@ -34,8 +36,9 @@ def getSecurityTxt(host: str, port=443) -> str:
     except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError) as e:
         return False
 
-"""Use circl.lu to find passive DNS records for the given IP and return a set of unique domains"""
+
 def passiveDNS(ipstr: str) -> set[str]:
+    """Use circl.lu to find passive DNS records for the given IP and return a set of unique domains"""
     pdns = pypdns.PyPDNS(basic_auth=(creds.username,creds.password))
     res = pdns.iter_query(ipstr)
     domains=set()
@@ -43,9 +46,10 @@ def passiveDNS(ipstr: str) -> set[str]:
         domains.add(r.rdata)
     return domains
 
-"""Use circl.lu to find SSL Certs for the given IP and return a set of unique domains found in the certs on that IP
-OR return the raw cert data for a CIDR range"""
+
 def passiveSSL(ipstr: str) -> set[str]:
+    """Use circl.lu to find SSL Certs for the given IP and return a set of unique domains found in the certs on that IP
+    OR return the raw cert data for a CIDR range"""
     circl = pypssl.PyPSSL(basic_auth=(creds.username, creds.password))
     ssl= circl.query(ipstr)
     domains=set()
@@ -71,8 +75,9 @@ def passiveSSL(ipstr: str) -> set[str]:
     else: # CIDR search
         return ssl
 
-'''Finds the BGP Prefix/CIDR subnet that this IP is routed to'''
+
 def getPrefix(ipstr: str)-> str:
+    '''Finds the BGP Prefix/CIDR subnet that this IP is routed to'''
     url=f'https://stat.ripe.net/data/looking-glass/data.json?resource={ipstr}'
     r=requests.get(url)
     if r.status_code==200:
@@ -81,8 +86,9 @@ def getPrefix(ipstr: str)-> str:
     else:
         return "Error/0" #return small slash so won't be fed to passiveSSL on L78
 
-'''Returns a set of emails you can use to contact an IP owner about security issues'''
+
 def identifyIP(ipstr: str) -> set[str]:
+    '''Returns a set of emails you can use to contact an IP owner about security issues'''
     sec=getSecurityTxt(ipstr)
     if sec:
         return getEmailAddressesFromSecurityTxt(sec)
@@ -127,8 +133,9 @@ def getEmailAddressesFromSecurityTxt(sectxt:str)->set[str]:
         raise Exception('Failed to find email addresses in security.txt. Dumping whole file:\n'+sectxt)
     return addresses
 
-'''Returns a set of emails you can use to contact a domain owner about security issues'''
+
 def identifyDomain(domain:str)->set[str]:
+    '''Returns a set of emails you can use to contact a domain owner about security issues'''
     sec=getSecurityTxt(domain)
     if sec:
         return getEmailAddressesFromSecurityTxt(sec)
@@ -136,27 +143,3 @@ def identifyDomain(domain:str)->set[str]:
     return set()
 
 
-
-"""
-Things to try
-0. security.txt = done (shodan)
-
-1. find a domain
-- ssl subject or issuer domain (exclude common CAs)
-- check other ports on same IP (shodan)
-    - EHLO banner
-    - web content
-    - ssh banner
-    - SNMP
-- passive dns domain (dumpsterDNS, circl.lu etc)
-- reverse dns domain (exclude answers that contain the ip address in reverse as prob just the ISP?)
-- check BGP and repeat for other IPs in the subnet, find a pattern?
-
-2. look for security contact on the domain (or IP if 1 unsuccessful)
-- security.txt
-- scrape 80/443 links for security
-- scrape for contact
-- whois
-- geoIP and pass to relevant CSIRT.Global chapter
-- pass to local NCSC
-"""
