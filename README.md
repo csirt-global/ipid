@@ -7,7 +7,6 @@ This script is for fingerprinting servers to determine what vunerabilities shoul
 
 ## TO DO
 0. security.txt = done (shodan)
-
 1. Find a domain
 - ssl subject or issuer domain (exclude common CAs)
 - check other ports on same IP (shodan)
