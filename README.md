@@ -2,36 +2,63 @@
 
 ## Goals
 
-This script is for fingerprinting servers to determine what vunerabilities should lead to responsible disclosure. 
+This script is for fingerprinting servers to find potential vunerabilities for responsible disclosure. 
 
+## Requirements
 
-## TO DO
-0. security.txt = done (shodan)
-1. Find a domain
-- ssl subject or issuer domain (exclude common CAs)
-- check other ports on same IP (shodan)
-    - EHLO banner
-    - web content
-    - ssh banner
-    - SNMP
-- passive dns domain (dumpsterDNS, circl.lu etc)
-- reverse dns domain (exclude answers that contain the ip address in reverse as prob just the ISP?)
-- check BGP and repeat for other IPs in the subnet, find a pattern?
+Requirements are in the requirements.txt
+
+```python
+
+requests>2
+pypdns>2
+pypssl>2
+
+```
+
+## Quick Start
+
+ADD HOW TO USE HERE
+
+## Feature list
+
+[x] security.txt (shodan)
+[ ] Find a domain
+[ ] ssl subject or issuer domain (exclude common CAs)
+[ ] check other ports on same IP (shodan) 
+    - [ ] EHLO banner
+    - [ ] web content
+    - [ ] ssh banner
+    - [ ] SNMP
+[ ] Passive dns domain (dumpsterDNS, circl.lu etc)
+[ ] Reverse dns domain (exclude answers that contain the ip address in reverse as prob just the ISP?)
+[ ] Check BGP and repeat for other IPs in the subnet, find a pattern?
 
 2. Look for security contact on the domain (or IP if 1 unsuccessful)
-- security.txt
-- scrape 80/443 links for security
-- scrape for contact
-- whois
-- geoIP and pass to relevant CSIRT.Global chapter
-- pass to local NCSC
+[ ] security.txt
+[ ] scrape 80/443 links for security
+[ ] scrape for contact
+[ ] whois
+[ ] geoIP and pass to relevant CSIRT.Global chapter
+[ ] pass to local NCSC
 
-3. Add setting.py
+3. Add setting.py 
+The goal here would be to decouple variables from the code logic as much as possible and improve configuration flexibility. 
+It would be the one place to store all project relevant variables
 
 ## Shodan Input
 
+### Shodan - Set up and configuration. 
+
+You need credentials, information here: https://account.shodan.io/billing
+
+username: the email 
+
 When you query shodan.io, it returns a banner. 
-The minimum parameters you can find it seems based on their documentation should always be something like this: 
+See here about banners : https://help.shodan.io/the-basics/what-is-shodan
+
+Banners vary greatly depending on the type of systems you are looking into. 
+The simplest banner you could get as a result would look like this
 
 ```json
 {
@@ -48,3 +75,11 @@ The minimum parameters you can find it seems based on their documentation should
 }
 ```
 See link to documentation here: https://help.shodan.io/the-basics/search-query-fundamentals
+
+## Expected Output
+
+ADD EXPECTED OUTPUT HERE
+
+## How to contribute
+
+ADD HOW TO CONTRIBUTE HERE
